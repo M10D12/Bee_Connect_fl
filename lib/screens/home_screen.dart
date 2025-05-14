@@ -33,15 +33,25 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("BeeConnect"),
-        backgroundColor: const Color(0xFFFFC107),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => Navigator.pushNamed(context, '/profile'),
+      backgroundColor: const Color(0xFFFFC107),
+      title: Row(
+        children: [
+          Image.asset(
+            'assets/logo_beeconnect.png',
+            height: 32,
           ),
+          const SizedBox(width: 8),
+          const Text("BeeConnect"),
         ],
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.person),
+          onPressed: () => Navigator.pushNamed(context, '/profile'),
+        ),
+      ],
+    ),
+
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: const Color(0xFFFFC107),
         selectedItemColor: Colors.black,
@@ -75,15 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             ElevatedButton(
-              onPressed: () async {
-                // Exemplo de inserção fictícia
-                await db.insertApiary(
-                  DateTime.now().millisecondsSinceEpoch.toString(),
-                  "Novo Apiário",
-                  "Localização de Teste",
-                );
-                _refreshApiaries();
-              },
+              onPressed: () => Navigator.pushNamed(context, '/createApiary'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 foregroundColor: Colors.white,

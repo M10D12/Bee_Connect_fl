@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:beeconnect_flutter/screens/home_screen.dart';
 // import 'package:beeconnect_flutter/screens/login_screen.dart';
 // import 'package:beeconnect_flutter/screens/register_screen.dart';
-// import 'package:beeconnect_flutter/screens/create_apiary_screen.dart';
+import 'package:beeconnect_flutter/screens/create_apiary.dart';
 // import 'package:beeconnect_flutter/screens/edit_hive_screen.dart';
 // import 'package:beeconnect_flutter/screens/apiary_screen.dart';
 // import 'package:beeconnect_flutter/screens/my_apiaries_map_screen.dart';
@@ -29,7 +29,7 @@ class BeeConnectApp extends StatelessWidget {
         // '/login': (context) => LoginScreen(),
         // '/register': (context) => RegisterScreen(),
         '/home': (context) => HomeScreen(),
-        // '/createApiary': (context) => CreateApiaryScreen(),
+        '/createApiary': (context) => CreateApiaryScreen(),
         // '/editHive': (context) => EditHiveScreen(),
         // '/apiaryScreen': (context) => ApiaryScreen(),
         // '/myApiariesMap': (context) => MyApiariesMapScreen(),
