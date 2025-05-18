@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:beeconnect_flutter/db/database_helper.dart';
 
 class CreateApiaryScreen extends StatefulWidget {
   const CreateApiaryScreen({super.key});
@@ -35,27 +36,39 @@ class _CreateApiaryScreenState extends State<CreateApiaryScreen> {
     }
   }
 
-  void _onSave() {
-    if (_nameController.text.isEmpty || _addressController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Preenche todos os campos obrigatórios")),
-      );
-      return;
-    }
-
-    String? base64Image = _imageBytes != null ? base64Encode(_imageBytes!) : null;
-
-    // Aqui guardarias em SQLite com sqflite
-    print("Nome: ${_nameController.text}");
-    print("Localização: ${_addressController.text}");
-    print("Ambiente: $selectedEnv");
-    print("Lat/Lon: $latitude / $longitude");
-    print("Imagem: ${base64Image != null ? 'Sim' : 'Não'}");
-
+  void _onSave() async {
+  if (_nameController.text.isEmpty || _addressController.text.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Apiário criado com sucesso!")),
+      const SnackBar(content: Text("Preenche todos os campos obrigatórios")),
     );
+    return;
   }
+
+  String? base64Image = _imageBytes != null ? base64Encode(_imageBytes!) : null;
+
+  // Instanciar o helper
+  final db = DatabaseHelper();
+
+  // Inserir na base de dados
+  await db.insertApiary(
+    DateTime.now().millisecondsSinceEpoch.toString(), // ID único
+    _nameController.text,
+    _addressController.text,
+    selectedEnv,
+    latitude,
+    longitude,
+    base64Image,
+  );
+
+  // Mensagem de sucesso
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Apiário criado com sucesso!")),
+  );
+
+  // Voltar à página inicial
+  Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+}
+
 
   @override
   Widget build(BuildContext context) {

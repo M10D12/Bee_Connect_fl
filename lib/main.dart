@@ -1,23 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:beeconnect_flutter/screens/home_screen.dart';
-// import 'package:beeconnect_flutter/screens/login_screen.dart';
-// import 'package:beeconnect_flutter/screens/register_screen.dart';
 import 'package:beeconnect_flutter/screens/create_apiary.dart';
-// import 'package:beeconnect_flutter/screens/edit_hive_screen.dart';
-// import 'package:beeconnect_flutter/screens/apiary_screen.dart';
-// import 'package:beeconnect_flutter/screens/my_apiaries_map_screen.dart';
-// import 'package:beeconnect_flutter/screens/colmeia_screen.dart';
-// import 'package:beeconnect_flutter/screens/profile_screen.dart';
-// import 'package:beeconnect_flutter/screens/apiary_selection_screen.dart';
-// import 'package:beeconnect_flutter/screens/statistics_screen.dart';
-// import 'package:beeconnect_flutter/screens/calendar_screen.dart';
+import 'package:beeconnect_flutter/screens/apiary_screen.dart';
+import 'package:beeconnect_flutter/screens/create_hive.dart';
 
 void main() {
-  runApp(BeeConnectApp());
+  runApp(const BeeConnectApp());
 }
 
 class BeeConnectApp extends StatelessWidget {
   const BeeConnectApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -25,19 +18,42 @@ class BeeConnectApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.amber),
       initialRoute: '/home',
-      routes: {
-        // '/login': (context) => LoginScreen(),
-        // '/register': (context) => RegisterScreen(),
-        '/home': (context) => HomeScreen(),
-        '/createApiary': (context) => CreateApiaryScreen(),
-        // '/editHive': (context) => EditHiveScreen(),
-        // '/apiaryScreen': (context) => ApiaryScreen(),
-        // '/myApiariesMap': (context) => MyApiariesMapScreen(),
-        // '/colmeiaScreen': (context) => ColmeiaScreen(),
-        // '/profile': (context) => ProfileScreen(),
-        // '/apiaries': (context) => ApiarySelectionScreen(),
-        // '/statistics': (context) => StatisticsScreen(),
-        // '/calendar': (context) => CalendarScreen(),
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/home':
+            return MaterialPageRoute(builder: (_) => const HomeScreen());
+
+          case '/createApiary':
+            return MaterialPageRoute(builder: (_) => const CreateApiaryScreen());
+
+          case '/apiaryScreen':
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (_) => ApiaryScreen(
+              apiaryId: args['apiaryId'],
+              apiaryName: args['apiaryName'],
+              latitude: args['latitude'],
+              longitude: args['longitude'],
+            ),
+          );
+          case '/createHive':
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (_) => CreateHiveScreen(
+              apiaryId: args['apiaryId'],
+              apiaryName: args['apiaryName'],
+            ),
+          );
+
+
+
+          default:
+            return MaterialPageRoute(
+              builder: (_) => const Scaffold(
+                body: Center(child: Text('Rota não encontrada')),
+              ),
+            );
+        }
       },
     );
   }

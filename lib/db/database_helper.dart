@@ -5,45 +5,127 @@ class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
 
-  static Database? _database;
-
   DatabaseHelper._internal();
 
+  Database? _database;
+
   Future<Database> get database async {
-    _database ??= await _initDatabase();
+    if (_database != null) return _database!;
+    _database = await _initDb();
     return _database!;
   }
 
-  Future<Database> _initDatabase() async {
-    final path = join(await getDatabasesPath(), 'beeconnect.db');
+  Future<Database> _initDb() async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'beeconnect.db');
 
-    return openDatabase(
+    return await openDatabase(
       path,
-      version: 1,
-      onCreate: (db, version) {
-        return db.execute(
-          'CREATE TABLE apiaries(id TEXT PRIMARY KEY, name TEXT, location TEXT)',
-        );
+      version: 2,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE apiaries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            location TEXT,
+            environment TEXT,
+            latitude REAL,
+            longitude REAL,
+            imageBase64 TEXT
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE hives (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            type TEXT,
+            creation_date TEXT,
+            description TEXT,
+            image TEXT,
+            apiary_id TEXT
+          )
+        ''');
       },
     );
   }
 
-  Future<void> insertApiary(String id, String name, String location) async {
+  // ------------------ APIARIES ------------------
+
+  Future<void> insertApiary(
+    String id,
+    String name,
+    String location,
+    String env,
+    double lat,
+    double lon,
+    String? imageBase64,
+  ) async {
     final db = await database;
     await db.insert(
       'apiaries',
-      {'id': id, 'name': name, 'location': location},
+      {
+        'id': id,
+        'name': name,
+        'location': location,
+        'environment': env,
+        'latitude': lat,
+        'longitude': lon,
+        'imageBase64': imageBase64,
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
   Future<List<Map<String, dynamic>>> getApiaries() async {
     final db = await database;
-    return db.query('apiaries');
+    return await db.query('apiaries');
   }
 
-  Future<void> deleteApiary(String id) async {
+  Future<void> deleteApiary(int id) async {
     final db = await database;
     await db.delete('apiaries', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ------------------ HIVES ------------------
+
+  Future<void> insertHive({
+    required String id,
+    required String name,
+    String? imageBase64,
+    required String apiaryId,
+    required String type,
+    required String creationDate,
+    required String description,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'hives',
+      {
+        'id': id,
+        'name': name,
+        'image': imageBase64,
+        'apiary_id': apiaryId,
+        'type': type,
+        'creation_date': creationDate,
+        'description': description,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+
+  Future<List<Map<String, dynamic>>> getHivesByApiary(String apiaryId) async {
+    final db = await database;
+    return await db.query(
+      'hives',
+      where: 'apiary_id = ?',
+      whereArgs: [apiaryId],
+    );
+  }
+
+  Future<void> deleteHive(String id) async {
+    final db = await database;
+    await db.delete('hives', where: 'id = ?', whereArgs: [id]);
   }
 }

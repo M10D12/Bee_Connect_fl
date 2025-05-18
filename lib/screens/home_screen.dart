@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:beeconnect_flutter/db/database_helper.dart';
+import 'package:beeconnect_flutter/screens/apiary_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _deleteApiary(String id) async {
+  void _deleteApiary(int id) async {
     await db.deleteApiary(id);
     _refreshApiaries();
   }
@@ -127,7 +129,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () => _deleteApiary(apiary['id']),
                           ),
-                          onTap: () => Navigator.pushNamed(context, '/apiaryScreen'),
+                          onTap: () {
+                                    Navigator.pushNamed(
+                                        context,
+                                        '/apiaryScreen',
+                                        arguments: {
+                                          'apiaryId': apiary['id'].toString(),
+                                          'apiaryName': apiary['name'],
+                                          'latitude': apiary['latitude'],
+                                          'longitude': apiary['longitude'],
+                                        },
+                                      );
+
+                                  },
+
                         ),
                       );
                     },
