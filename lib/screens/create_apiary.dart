@@ -28,7 +28,7 @@ class _CreateApiaryScreenState extends State<CreateApiaryScreen> {
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      final bytes = await picked.readAsBytes(); // ← CORREÇÃO AQUI
+      final bytes = await picked.readAsBytes(); 
       setState(() {
         _selectedImage = picked;
         _imageBytes = bytes;
