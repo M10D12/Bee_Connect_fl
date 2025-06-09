@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.pushNamed(context, '/apiaries');
               break;
             case 2:
-              Navigator.pushNamed(context, '/myApiariesMap');
+              Navigator.pushNamed(context, '/map_screen');
               break;
             case 3:
               Navigator.pushNamed(context, '/calendar');
@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.bug_report), label: ''),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: '',),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: ''),
         ],
       ),

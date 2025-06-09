@@ -1,3 +1,4 @@
+import 'package:beeconnect_flutter/screens/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:beeconnect_flutter/screens/home_screen.dart';
 import 'package:beeconnect_flutter/screens/create_apiary.dart';
@@ -26,6 +27,9 @@ class BeeConnectApp extends StatelessWidget {
           case '/createApiary':
             return MaterialPageRoute(builder: (_) => const CreateApiaryScreen());
 
+          case '/map_screen':
+              return MaterialPageRoute(builder: (_) => const MapScreen());
+
           case '/apiaryScreen':
           final args = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
@@ -44,8 +48,6 @@ class BeeConnectApp extends StatelessWidget {
               apiaryName: args['apiaryName'],
             ),
           );
-
-
 
           default:
             return MaterialPageRoute(
