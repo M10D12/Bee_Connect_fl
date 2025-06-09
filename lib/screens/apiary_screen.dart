@@ -98,16 +98,20 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.black,
-        onPressed: () => Navigator.pushNamed(
-                    context,
-                    '/createHive',
-                    arguments: {
-                      'apiaryId': widget.apiaryId,
-                      'apiaryName': widget.apiaryName,
-                    },
-                  ),
+        onPressed: () async {
+          await Navigator.pushNamed(
+            context,
+            '/createHive',
+            arguments: {
+              'apiaryId': widget.apiaryId,
+              'apiaryName': widget.apiaryName,
+            },
+          );
+          _refreshHives(); // <- chama quando voltar da página CreateHiveScreen
+        },
         child: const Icon(Icons.add, color: Colors.white),
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -149,7 +153,16 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () => _deleteHive(hive['id']),
                           ),
-                          onTap: () => Navigator.pushNamed(context, '/colmeiaScreen'),
+                          onTap: () async {
+                            await Navigator.pushNamed(
+                              context,
+                              '/hiveScreen',
+                              arguments: {
+                                'hiveId': hive['id'],
+                              },
+                            );
+                            _refreshHives();  // <- quando voltas, recarrega a lista
+                          },
                         ),
                       );
                     },

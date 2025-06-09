@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:beeconnect_flutter/db/database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ADICIONA ISTO
 
 class LoginPage extends StatefulWidget {
   @override
@@ -59,7 +60,8 @@ class _LoginPageState extends State<LoginPage> {
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
-                ), backgroundColor: Color(0xFFF8B42B),
+                ),
+                backgroundColor: Color(0xFFF8B42B),
                 padding: EdgeInsets.symmetric(vertical: 15, horizontal: 100),
               ),
             ),
@@ -96,7 +98,11 @@ class _LoginPageState extends State<LoginPage> {
       final user = await _dbHelper.getUser(username);
 
       if (user != null && user['password'] == password) {
-        // Navigate to home page or dashboard
+        // Guardar username no SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('loggedUsername', username);
+
+        // Sucesso → ir para home
         Fluttertoast.showToast(msg: "Login successful!");
         Navigator.pushReplacementNamed(context, '/home');
       } else {

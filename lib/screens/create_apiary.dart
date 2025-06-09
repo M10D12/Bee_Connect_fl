@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:beeconnect_flutter/db/database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ADICIONADO
 
 class CreateApiaryScreen extends StatefulWidget {
   const CreateApiaryScreen({super.key});
@@ -37,38 +38,49 @@ class _CreateApiaryScreenState extends State<CreateApiaryScreen> {
   }
 
   void _onSave() async {
-  if (_nameController.text.isEmpty || _addressController.text.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Preenche todos os campos obrigatórios")),
+    if (_nameController.text.isEmpty || _addressController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Preenche todos os campos obrigatórios")),
+      );
+      return;
+    }
+
+    String? base64Image = _imageBytes != null ? base64Encode(_imageBytes!) : null;
+
+    // Ler username logado
+    final prefs = await SharedPreferences.getInstance();
+    final loggedUsername = prefs.getString('loggedUsername');
+
+    if (loggedUsername == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Erro: utilizador não autenticado")),
+      );
+      return;
+    }
+
+    // Instanciar o helper
+    final db = DatabaseHelper();
+
+    // Inserir na base de dados
+    await db.insertApiary(
+      DateTime.now().millisecondsSinceEpoch.toString(), // ID único
+      _nameController.text,
+      _addressController.text,
+      selectedEnv,
+      latitude,
+      longitude,
+      base64Image,
+      loggedUsername, // aqui passa o username
     );
-    return;
+
+    // Mensagem de sucesso
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Apiário criado com sucesso!")),
+    );
+
+    // Voltar à página inicial
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
-
-  String? base64Image = _imageBytes != null ? base64Encode(_imageBytes!) : null;
-
-  // Instanciar o helper
-  final db = DatabaseHelper();
-
-  // Inserir na base de dados
-  await db.insertApiary(
-    DateTime.now().millisecondsSinceEpoch.toString(), // ID único
-    _nameController.text,
-    _addressController.text,
-    selectedEnv,
-    latitude,
-    longitude,
-    base64Image,
-  );
-
-  // Mensagem de sucesso
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text("Apiário criado com sucesso!")),
-  );
-
-  // Voltar à página inicial
-  Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +139,6 @@ class _CreateApiaryScreenState extends State<CreateApiaryScreen> {
                 )
               ],
             ),
-
             const SizedBox(height: 16),
             const Text("Meio envolvente"),
             Row(
@@ -194,7 +205,7 @@ class _CreateApiaryScreenState extends State<CreateApiaryScreen> {
                         point: latLng,
                         width: 40,
                         height: 40,
-                        child: const Icon(Icons.location_pin, color: Colors.red, size: 40), // ← CORREÇÃO AQUI
+                        child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
                       ),
                     ],
                   ),

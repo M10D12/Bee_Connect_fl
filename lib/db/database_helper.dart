@@ -21,22 +21,23 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,  // Versão atualizada
+      version: 5,  // <--- Versão atualizada para 5
       onCreate: (db, version) async {
         // Criando a tabela apiaries
         await db.execute('''
-          CREATE TABLE apiaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            location TEXT,
-            environment TEXT,
-            latitude REAL,
-            longitude REAL,
-            imageBase64 TEXT
-          )
-        ''');
+        CREATE TABLE apiaries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT,
+          location TEXT,
+          environment TEXT,
+          latitude REAL,
+          longitude REAL,
+          imageBase64 TEXT,
+          owner_username TEXT
+        )
+      ''');
 
-        // Criando a tabela hives
+        // Criando a tabela hives com coluna alcas
         await db.execute('''
           CREATE TABLE hives (
             id TEXT PRIMARY KEY,
@@ -45,13 +46,28 @@ class DatabaseHelper {
             creation_date TEXT,
             description TEXT,
             image TEXT,
-            apiary_id TEXT
+            apiary_id TEXT,
+            alcas INTEGER DEFAULT 0  -- <--- NOVO CAMPO!
+          )
+        ''');
+
+        // Criando a tabela inspecoes
+        await db.execute('''
+          CREATE TABLE inspecoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hive_id TEXT,
+            data TEXT,
+            alimentacao TEXT,
+            tratamentos TEXT,
+            problemas TEXT,
+            observacoes TEXT,
+            proxima_visita TEXT
           )
         ''');
 
         // Criando a tabela users
         await db.execute('''
-          CREATE TABLE IF NOT EXISTS users (
+          CREATE TABLE users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
             password TEXT
@@ -59,7 +75,6 @@ class DatabaseHelper {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Quando a versão for atualizada, podemos incluir migrações aqui
         if (oldVersion < 3) {
           await db.execute('''
             CREATE TABLE IF NOT EXISTS users (
@@ -67,6 +82,26 @@ class DatabaseHelper {
               username TEXT,
               password TEXT
             )
+          ''');
+        }
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS inspecoes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              hive_id TEXT,
+              data TEXT,
+              alimentacao TEXT,
+              tratamentos TEXT,
+              problemas TEXT,
+              observacoes TEXT,
+              proxima_visita TEXT
+            )
+          ''');
+        }
+        if (oldVersion < 5) {
+          // ADICIONA coluna 'alcas' se vier de versão anterior
+          await db.execute('''
+            ALTER TABLE hives ADD COLUMN alcas INTEGER DEFAULT 0
           ''');
         }
       },
@@ -83,6 +118,7 @@ class DatabaseHelper {
     double lat,
     double lon,
     String? imageBase64,
+    String ownerUsername,
   ) async {
     final db = await database;
     await db.insert(
@@ -95,14 +131,19 @@ class DatabaseHelper {
         'latitude': lat,
         'longitude': lon,
         'imageBase64': imageBase64,
+        'owner_username': ownerUsername,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  Future<List<Map<String, dynamic>>> getApiaries() async {
+  Future<List<Map<String, dynamic>>> getApiaries(String ownerUsername) async {
     final db = await database;
-    return await db.query('apiaries');
+    return await db.query(
+      'apiaries',
+      where: 'owner_username = ?',
+      whereArgs: [ownerUsername],
+    );
   }
 
   Future<void> deleteApiary(int id) async {
@@ -120,6 +161,7 @@ class DatabaseHelper {
     required String type,
     required String creationDate,
     required String description,
+    int alcas = 0,  // <--- novo parametro com default
   }) async {
     final db = await database;
     await db.insert(
@@ -132,6 +174,7 @@ class DatabaseHelper {
         'type': type,
         'creation_date': creationDate,
         'description': description,
+        'alcas': alcas,  // <--- inserir alcas
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -146,9 +189,67 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> updateHive({
+    required String id,
+    required String name,
+    required String type,
+    required String description,
+    required int alcas,
+  }) async {
+    final db = await database;
+    await db.update(
+      'hives',
+      {
+        'name': name,
+        'type': type,
+        'description': description,
+        'alcas': alcas,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> deleteHive(String id) async {
     final db = await database;
     await db.delete('hives', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ------------------ INSPECOES ------------------
+
+  Future<void> insertInspecao({
+    required String hiveId,
+    required String data,
+    required String alimentacao,
+    required String tratamentos,
+    required String problemas,
+    required String observacoes,
+    String? proximaVisita,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'inspecoes',
+      {
+        'hive_id': hiveId,
+        'data': data,
+        'alimentacao': alimentacao,
+        'tratamentos': tratamentos,
+        'problemas': problemas,
+        'observacoes': observacoes,
+        'proxima_visita': proximaVisita,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getInspecoes(String hiveId) async {
+    final db = await database;
+    return await db.query(
+      'inspecoes',
+      where: 'hive_id = ?',
+      whereArgs: [hiveId],
+      orderBy: 'data DESC',
+    );
   }
 
   // ------------------ USERS ------------------
@@ -184,16 +285,16 @@ class DatabaseHelper {
   }
 
   Future<void> updateUserProfile(String userId, String name, String email, String? profilePicBase64) async {
-  final db = await database;
-  await db.update(
-    'users',
-    {
-      'username': name,
-      'email': email,
-      'profilePic': profilePicBase64,
-    },
-    where: 'id = ?',
-    whereArgs: [userId],
-  );
-}
+    final db = await database;
+    await db.update(
+      'users',
+      {
+        'username': name,
+        'email': email,
+        'profilePic': profilePicBase64,
+      },
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
 }

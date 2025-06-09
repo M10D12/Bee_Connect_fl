@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:beeconnect_flutter/db/database_helper.dart'; // Certifique-se de que o DatabaseHelper está importado
+import 'package:beeconnect_flutter/db/database_helper.dart';
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ADICIONADO
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -19,7 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   final DatabaseHelper dbHelper = DatabaseHelper();
   final ImagePicker _picker = ImagePicker();
-  
+
   @override
   void initState() {
     super.initState();
@@ -28,28 +28,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Carrega o perfil do usuário
   Future<void> _loadUserProfile() async {
-    // Aqui, você obtém o ID do usuário logado. Este ID pode ser armazenado no banco de dados ou ser gerado no login.
-    // Vamos assumir que o "userId" é armazenado na base de dados após o login.
-    final userId = await _getUserId(); // Substitua pelo método adequado para obter o ID do usuário logado.
+    final prefs = await SharedPreferences.getInstance();
+    final loggedUsername = prefs.getString('loggedUsername');
 
-    if (userId != null) {
-      final user = await dbHelper.getUser(userId); // Método no DatabaseHelper que retorna os dados do usuário pelo ID
+    if (loggedUsername != null) {
+      final user = await dbHelper.getUser(loggedUsername);
       if (user != null) {
         setState(() {
           username = user['username'];
-          email = user['email'];
+          email = user['email'] ?? '';
           profilePicBase64 = user['profilePic']; // Se o perfil tiver imagem base64
         });
       }
+    } else {
+      // Se não houver user logado, volta para login
+      Navigator.pushReplacementNamed(context, '/login');
     }
-  }
-
-  // Método para buscar o ID do usuário. (Adapte ao seu fluxo de login)
-  Future<String?> _getUserId() async {
-    // Aqui você pode ter a lógica para pegar o usuário logado
-    // Exemplo: Você pode armazenar o ID do usuário no SharedPreferences ou em uma tabela
-    // e pegar essa informação na tela do perfil.
-    return "user123"; // Apenas um exemplo.
   }
 
   // Função para escolher a imagem e convertê-la para Base64
@@ -65,28 +59,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Função para salvar as alterações no banco de dados
   Future<void> _saveProfile() async {
-    final userId = await _getUserId();
+    final prefs = await SharedPreferences.getInstance();
+    final loggedUsername = prefs.getString('loggedUsername');
 
-    if (userId != null) {
-      await dbHelper.updateUserProfile(
-        userId, 
-        username, 
-        email, 
-        profilePicBase64
-      );
+    if (loggedUsername != null) {
+      // Primeiro, obtemos o user ID
+      final user = await dbHelper.getUser(loggedUsername);
+      if (user != null) {
+        await dbHelper.updateUserProfile(
+          user['id'].toString(),
+          username,
+          email,
+          profilePicBase64,
+        );
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Perfil atualizado com sucesso"),
-      ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Perfil atualizado com sucesso")),
+        );
+      }
     }
+  }
+
+  // Função para logout
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('loggedUsername');
+
+    // Volta para o login
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Perfil"),
-        backgroundColor: Color(0xFFFFC107),
+        title: const Text("Perfil"),
+        backgroundColor: const Color(0xFFFFC107),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -116,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ElevatedButton(
               onPressed: _saveProfile,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFFC107),
+                backgroundColor: const Color(0xFFFFC107),
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
@@ -126,10 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                // Handle logout logic here
-                Navigator.pushReplacementNamed(context, '/login');
-              },
+              onPressed: _logout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),

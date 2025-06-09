@@ -1,26 +1,28 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'dart:async';
+import 'dart:typed_data';
+import 'package:beeconnect_flutter/db/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-class ColmeiaScreen extends StatefulWidget {
-  final String colmeiaId;
-  const ColmeiaScreen({required this.colmeiaId});
+
+class HiveScreen extends StatefulWidget {
+  final String hiveId;
+  const HiveScreen({required this.hiveId});
 
   @override
-  State<ColmeiaScreen> createState() => _ColmeiaScreenState();
+  State<HiveScreen> createState() => _HiveScreenState();
 }
 
-class _ColmeiaScreenState extends State<ColmeiaScreen> {
-  final _firestore = FirebaseFirestore.instance;
-  final _realtimeDb = FirebaseDatabase.instance;
+class _HiveScreenState extends State<HiveScreen> {
+  final db = DatabaseHelper();
 
   String nome = '';
   String tipo = '';
   String descricao = '';
   int alcas = 0;
 
-  Map<String, dynamic> sensorData = {};
   List<Map<String, dynamic>> historico = [];
 
   bool showInspecaoForm = false;
@@ -37,86 +39,103 @@ class _ColmeiaScreenState extends State<ColmeiaScreen> {
 
   List<String> typeOptions = ["Langstroth", "Lusitano", "Reversível", "Industrial (dadant)"];
 
+  // --- SENSOR BLE ---
+  final flutterReactiveBle = FlutterReactiveBle();
+  StreamSubscription<DiscoveredDevice>? scanSubscription;
+  double? sensorTemperature;
+  int? sensorHumidity;
+
+  Future<void> _requestPermissions() async {
+    await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+    ].request();
+  }
+
+  Timer? scanTimer;
+
   @override
   void initState() {
     super.initState();
-    _loadColmeiaData();
-    _listenToRealtimeData();
-    _loadHistorico();
-  }
-
-  Future<void> _loadColmeiaData() async {
-    try {
-      final doc = await _firestore.collection('colmeia').doc(widget.colmeiaId).get();
-      setState(() {
-        nome = doc['nome'] ?? '';
-        tipo = doc['tipo'] ?? '';
-        descricao = doc['descricao'] ?? '';
-        alcas = (doc['alcas'] ?? 0).toInt();
-      });
-    } catch (e) {
-      print('Erro carregar colmeia: $e');
-    }
-  }
-
-  void _listenToRealtimeData() {
-    _realtimeDb.ref('colmeias/colmeia1').onValue.listen((event) {
-      final data = event.snapshot.value as Map?;
-      if (data != null) {
-        setState(() {
-          sensorData = Map<String, dynamic>.from(data);
-        });
-      }
+    _requestPermissions().then((_) {
+      _loadHiveData();
+      _loadHistorico();
+      _startSensorScan();
+      scanTimer = Timer.periodic(Duration(seconds: 10), (_) => _startSensorScan());
     });
+  }
+
+  @override
+  void dispose() {
+    scanSubscription?.cancel();
+    scanTimer?.cancel();
+    super.dispose();
+  }
+
+
+  Future<void> _loadHiveData() async {
+    final result = await db.database.then((dbInstance) {
+      return dbInstance.query(
+        'hives',
+        where: 'id = ?',
+        whereArgs: [widget.hiveId],
+        limit: 1,
+      );
+    });
+
+    if (result.isNotEmpty) {
+      final hive = result.first;
+      setState(() {
+        nome = hive['name'] as String? ?? '';
+        tipo = hive['type'] as String? ?? '';
+        descricao = hive['description'] as String? ?? '';
+        alcas = hive['alcas'] != null ? hive['alcas'] as int : 0;
+      });
+    }
   }
 
   Future<void> _loadHistorico() async {
-    try {
-      final result = await _firestore
-          .collection('colmeia')
-          .doc(widget.colmeiaId)
-          .collection('inspecoes')
-          .orderBy('data', descending: true)
-          .get();
-
-      setState(() {
-        historico = result.docs.map((doc) => doc.data()).toList();
-      });
-    } catch (e) {
-      print('Erro carregar histórico: $e');
-    }
+    final result = await db.getInspecoes(widget.hiveId);
+    setState(() {
+      historico = result;
+    });
   }
 
-  Future<void> _salvarColmeia() async {
-    await _firestore.collection('colmeia').doc(widget.colmeiaId).update({
-      'nome': nome,
-      'tipo': tipo,
-      'descricao': descricao,
-      'alcas': alcas,
+  Future<void> _salvarHive() async {
+    await db.database.then((dbInstance) {
+      dbInstance.update(
+        'hives',
+        {
+          'name': nome,
+          'type': tipo,
+          'description': descricao,
+          'alcas': alcas,
+        },
+        where: 'id = ?',
+        whereArgs: [widget.hiveId],
+      );
     });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Informações atualizadas!')),
     );
   }
 
   Future<void> _adicionarInspecao() async {
-    final inspecao = {
-      'data': dataInspecao,
-      'alimentacao': alimentacao,
-      'tratamentos': tratamentos,
-      'problemas': problemas,
-      'observacoes': observacoes,
-      if (proximaVisita.isNotEmpty) 'proxima_visita': proximaVisita,
-    };
+    await db.insertInspecao(
+      hiveId: widget.hiveId,
+      data: dataInspecao,
+      alimentacao: alimentacao,
+      tratamentos: tratamentos,
+      problemas: problemas,
+      observacoes: observacoes,
+      proximaVisita: proximaVisita.isNotEmpty ? proximaVisita : null,
+    );
 
-    await _firestore
-        .collection('colmeia')
-        .doc(widget.colmeiaId)
-        .collection('inspecoes')
-        .add(inspecao);
+    await _loadHistorico();
 
     setState(() {
-      historico.insert(0, inspecao);
       dataInspecao = '';
       alimentacao = '';
       tratamentos = '';
@@ -129,6 +148,45 @@ class _ColmeiaScreenState extends State<ColmeiaScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Inspeção adicionada!')),
     );
+  }
+
+  // --- SENSOR BLE ---
+  void _startSensorScan() {
+    scanSubscription?.cancel();
+    scanSubscription = flutterReactiveBle.scanForDevices(
+      withServices: [],
+      scanMode: ScanMode.lowLatency,
+    ).listen((device) {
+      if (device.manufacturerData.length >= 13 &&
+          device.manufacturerData[0] == 0x69 &&
+          device.manufacturerData[1] == 0x09) {
+        try {
+          double temp = _parseTemperature(device.manufacturerData);
+          int hum = _parseHumidity(device.manufacturerData);
+
+          setState(() {
+            sensorTemperature = temp;
+            sensorHumidity = hum;
+          });
+
+          scanSubscription?.cancel(); // para o scan depois de obter dados
+        } catch (e) {
+          print('Error parsing sensor data: $e');
+        }
+      }
+    }, onError: (err) {
+      print('Scan error: $err');
+    });
+  }
+
+  double _parseTemperature(Uint8List data) {
+    double mantissa = (data[10] & 0x0F) * 0.1 + (data[11] & 0x7F);
+    int sign = (data[11] & 0x80) > 0 ? 1 : -1;
+    return mantissa * sign;
+  }
+
+  int _parseHumidity(Uint8List data) {
+    return data[12] & 0x7F;
   }
 
   @override
@@ -183,16 +241,27 @@ class _ColmeiaScreenState extends State<ColmeiaScreen> {
             ],
           ),
           ElevatedButton(
-            onPressed: _salvarColmeia,
+            onPressed: _salvarHive,
             child: Text('Salvar'),
           ),
           Divider(height: 32),
 
-          Text('📡 Dados em Tempo Real da Colmeia', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('📍 Localização: ${sensorData['localizacao'] ?? ''}'),
-          Text('🌡️ Temperatura: ${sensorData['temperatura'] ?? ''}'),
-          Text('🔊 Nível de Som: ${sensorData['nivelSom'] ?? ''}'),
-          Text('💡 Luminosidade: ${sensorData['sensores']?['Luminosidade'] ?? '—'}'),
+          // DADOS SENSOR SWITCHBOT
+          Text('📡 Dados do Sensor SwitchBot', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          Card(
+            color: Colors.amber[50],
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('🌡️ Temperatura: ${sensorTemperature != null ? "${sensorTemperature!.toStringAsFixed(1)} ºC" : "A procurar..."}'),
+                  Text('💧 Humidade: ${sensorHumidity != null ? "$sensorHumidity %" : "A procurar..."}'),
+                ],
+              ),
+            ),
+          ),
 
           Divider(height: 32),
 

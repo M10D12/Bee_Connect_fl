@@ -7,6 +7,7 @@ import 'package:beeconnect_flutter/screens/apiary_screen.dart';
 import 'package:beeconnect_flutter/screens/login.dart';
 import 'package:beeconnect_flutter/screens/register.dart';
 import 'package:beeconnect_flutter/screens/create_hive.dart';
+import 'package:beeconnect_flutter/screens/hive_screen.dart';  // <-- IMPORTA TAMBÉM!
 
 void main() {
   runApp(const BeeConnectApp());
@@ -30,37 +31,45 @@ class BeeConnectApp extends StatelessWidget {
           case '/profile':
             return MaterialPageRoute(builder: (_) => const ProfileScreen());
 
-
           case '/createApiary':
             return MaterialPageRoute(builder: (_) => const CreateApiaryScreen());
 
           case '/login':
-            return MaterialPageRoute(builder: (_) =>  LoginPage());
+            return MaterialPageRoute(builder: (_) => LoginPage());
 
           case '/map_screen':
-              return MaterialPageRoute(builder: (_) => const MapScreen());
+            return MaterialPageRoute(builder: (_) => const MapScreen());
 
           case '/register':
-            return MaterialPageRoute(builder: (_) =>  RegisterPage());
+            return MaterialPageRoute(builder: (_) => RegisterPage());
 
           case '/apiaryScreen':
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (_) => ApiaryScreen(
-              apiaryId: args['apiaryId'],
-              apiaryName: args['apiaryName'],
-              latitude: args['latitude'],
-              longitude: args['longitude'],
-            ),
-          );
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (_) => ApiaryScreen(
+                apiaryId: args['apiaryId'],
+                apiaryName: args['apiaryName'],
+                latitude: args['latitude'],
+                longitude: args['longitude'],
+              ),
+            );
+
           case '/createHive':
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (_) => CreateHiveScreen(
-              apiaryId: args['apiaryId'],
-              apiaryName: args['apiaryName'],
-            ),
-          );
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (_) => CreateHiveScreen(
+                apiaryId: args['apiaryId'],
+                apiaryName: args['apiaryName'],
+              ),
+            );
+
+          case '/hiveScreen':  // <=== NOVO CASO ADICIONADO
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (_) => HiveScreen(
+                hiveId: args['hiveId'],
+              ),
+            );
 
           default:
             return MaterialPageRoute(

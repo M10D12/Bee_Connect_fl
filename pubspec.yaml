@@ -46,6 +46,11 @@ dependencies:
   image_picker: ^1.0.4
   geocoding: ^2.1.0
   fluttertoast: ^8.0.9
+  shared_preferences: ^2.0.15
+  flutter_reactive_ble: ^5.0.2
+  permission_handler: ^11.0.0
+
+
 
 
 dev_dependencies:

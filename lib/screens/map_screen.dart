@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:beeconnect_flutter/db/database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -21,15 +23,19 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadApiariesFromDb() async {
-    try {
-      final apiaries = await db.getApiaries();
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final loggedUsername = prefs.getString('loggedUsername');
+    if (loggedUsername == null) return;
 
-      final markers = apiaries.map((apiary) {
-        final lat = apiary['latitude'] ?? 0.0;
-        final lng = apiary['longitude'] ?? 0.0;
-        final name = apiary['name'] ?? '';
+    final apiaries = await db.getApiaries(loggedUsername);
 
-        return Marker(
+    final markers = apiaries.map((apiary) {
+      final lat = apiary['latitude'] ?? 0.0;
+      final lng = apiary['longitude'] ?? 0.0;
+      final name = apiary['name'] ?? '';
+
+      return Marker(
         point: LatLng(lat, lng),
         width: 80,
         height: 80,
@@ -42,16 +48,16 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
       );
+    }).toList();
 
-      }).toList();
-
-      setState(() {
-        _markers = markers;
-      });
-    } catch (e) {
-      print('Erro ao carregar apiários do DB: $e');
-    }
+    setState(() {
+      _markers = markers;
+    });
+  } catch (e) {
+    print('Erro ao carregar apiários do DB: $e');
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
