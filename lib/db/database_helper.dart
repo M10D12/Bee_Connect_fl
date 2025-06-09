@@ -21,8 +21,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,  // Versão atualizada
       onCreate: (db, version) async {
+        // Criando a tabela apiaries
         await db.execute('''
           CREATE TABLE apiaries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +36,7 @@ class DatabaseHelper {
           )
         ''');
 
+        // Criando a tabela hives
         await db.execute('''
           CREATE TABLE hives (
             id TEXT PRIMARY KEY,
@@ -46,6 +48,27 @@ class DatabaseHelper {
             apiary_id TEXT
           )
         ''');
+
+        // Criando a tabela users
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            password TEXT
+          )
+        ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Quando a versão for atualizada, podemos incluir migrações aqui
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              username TEXT,
+              password TEXT
+            )
+          ''');
+        }
       },
     );
   }
@@ -114,7 +137,6 @@ class DatabaseHelper {
     );
   }
 
-
   Future<List<Map<String, dynamic>>> getHivesByApiary(String apiaryId) async {
     final db = await database;
     return await db.query(
@@ -128,4 +150,50 @@ class DatabaseHelper {
     final db = await database;
     await db.delete('hives', where: 'id = ?', whereArgs: [id]);
   }
+
+  // ------------------ USERS ------------------
+
+  Future<void> insertUser(String username, String password) async {
+    final db = await database;
+    await db.insert(
+      'users',
+      {
+        'username': username,
+        'password': password,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getUser(String username) async {
+    final db = await database;
+    final result = await db.query(
+      'users',
+      where: 'username = ?',
+      whereArgs: [username],
+    );
+    if (result.isNotEmpty) {
+      return result.first;
+    }
+    return null;
+  }
+
+  Future<void> deleteUser(int id) async {
+    final db = await database;
+    await db.delete('users', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateUserProfile(String userId, String name, String email, String? profilePicBase64) async {
+  final db = await database;
+  await db.update(
+    'users',
+    {
+      'username': name,
+      'email': email,
+      'profilePic': profilePicBase64,
+    },
+    where: 'id = ?',
+    whereArgs: [userId],
+  );
+}
 }

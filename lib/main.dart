@@ -1,8 +1,11 @@
 import 'package:beeconnect_flutter/screens/map_screen.dart';
+import 'package:beeconnect_flutter/screens/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:beeconnect_flutter/screens/home_screen.dart';
 import 'package:beeconnect_flutter/screens/create_apiary.dart';
 import 'package:beeconnect_flutter/screens/apiary_screen.dart';
+import 'package:beeconnect_flutter/screens/login.dart';
+import 'package:beeconnect_flutter/screens/register.dart';
 import 'package:beeconnect_flutter/screens/create_hive.dart';
 
 void main() {
@@ -18,17 +21,27 @@ class BeeConnectApp extends StatelessWidget {
       title: 'BeeConnect',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.amber),
-      initialRoute: '/home',
+      initialRoute: '/login',
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/home':
             return MaterialPageRoute(builder: (_) => const HomeScreen());
 
+          case '/profile':
+            return MaterialPageRoute(builder: (_) => const ProfileScreen());
+
+
           case '/createApiary':
             return MaterialPageRoute(builder: (_) => const CreateApiaryScreen());
 
+          case '/login':
+            return MaterialPageRoute(builder: (_) =>  LoginPage());
+
           case '/map_screen':
               return MaterialPageRoute(builder: (_) => const MapScreen());
+
+          case '/register':
+            return MaterialPageRoute(builder: (_) =>  RegisterPage());
 
           case '/apiaryScreen':
           final args = settings.arguments as Map<String, dynamic>;
