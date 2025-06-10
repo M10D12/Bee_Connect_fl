@@ -26,7 +26,7 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
   late Future<List<Map<String, dynamic>>> _hivesFuture;
   String temperature = "--";
   String weatherInfo = "A obter...";
-  List<String> forecast = [];
+  List<Map<String, dynamic>> forecast = [];
 
   @override
   void initState() {
@@ -44,7 +44,7 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
 
   void fetchWeather() async {
     final url =
-        'https://api.openweathermap.org/data/2.5/weather?lat=${widget.latitude}&lon=${widget.longitude}&units=metric&appid=YOUR_API_KEY&lang=pt';
+        'https://api.openweathermap.org/data/2.5/weather?lat=${widget.latitude}&lon=${widget.longitude}&units=metric&appid=f907eff41b9ba822e28fcdf74b6c537c&lang=pt';
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -57,13 +57,13 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
 
   void fetchForecast() async {
     final url =
-        'https://api.openweathermap.org/data/2.5/forecast?lat=${widget.latitude}&lon=${widget.longitude}&units=metric&appid=YOUR_API_KEY&lang=pt';
+        'https://api.openweathermap.org/data/2.5/forecast?lat=${widget.latitude}&lon=${widget.longitude}&units=metric&appid=f907eff41b9ba822e28fcdf74b6c537c&lang=pt';
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final List list = data['list'];
       final Set<String> seenDays = {};
-      List<String> result = [];
+      List<Map<String, dynamic>> result = [];
 
       for (var item in list) {
         final dt = item['dt_txt'];
@@ -72,7 +72,13 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
           if (!seenDays.contains(day)) {
             final temp = item['main']['temp'].toInt();
             final desc = item['weather'][0]['description'];
-            result.add("$day: $temp°C, $desc");
+            final icon = item['weather'][0]['icon'];
+            result.add({
+              'day': day.split("-").last, 
+              'temp': temp,
+              'desc': desc,
+              'icon': icon,
+            });
             seenDays.add(day);
           }
         }
@@ -107,11 +113,10 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
               'apiaryName': widget.apiaryName,
             },
           );
-          _refreshHives(); // <- chama quando voltar da página CreateHiveScreen
+          _refreshHives();
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -124,15 +129,79 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
                 subtitle: Text(weatherInfo),
               ),
             ),
+            const SizedBox(height: 16),
+            const Text(
+              "Previsão dos próximos dias:",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 8),
-            const Text("Previsão dos próximos dias:", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            forecast.isEmpty
-                ? const Text("A obter...")
-                : Column(
-                    children: forecast.map((e) => Text(e)).toList(),
+            SizedBox(
+  height: 150, 
+  child: forecast.isEmpty
+      ? const Center(child: CircularProgressIndicator())
+      : ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: forecast.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final dayForecast = forecast[index];
+            return SizedBox(
+              width: 110,
+              child: Card(
+                color : Colors.amber[50],
+                elevation: 3,
+                margin: EdgeInsets.zero, 
+                child: Padding(
+                  padding: const EdgeInsets.all(6.0), 
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
+                    mainAxisSize: MainAxisSize.min, 
+                    children: [
+                      Text(
+                        dayForecast['day'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14, 
+                        ),
+                      ),
+                      SizedBox(
+                        height: 40, 
+                        child: Image.network(
+                          'https://openweathermap.org/img/wn/${dayForecast['icon']}@2x.png',
+                          width: 40,
+                          height: 40,
+                          errorBuilder: (context, error, stackTrace) => 
+                              const Icon(Icons.error), 
+                        ),
+                      ),
+                      Text(
+                        "${dayForecast['temp']}°C",
+                        style: const TextStyle(fontSize: 14), 
+                      ),
+                      SizedBox(
+                        height: 30, 
+                        child: Text(
+                          dayForecast['desc'],
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 10),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-            const SizedBox(height: 12),
+                ),
+              ),
+            );
+          },
+        ),
+),
+            const SizedBox(height: 16),
+            const Text(
+              "Colmeias:",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
                 future: _hivesFuture,
@@ -161,7 +230,7 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
                                 'hiveId': hive['id'],
                               },
                             );
-                            _refreshHives();  // <- quando voltas, recarrega a lista
+                            _refreshHives();
                           },
                         ),
                       );

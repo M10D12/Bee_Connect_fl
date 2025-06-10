@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:beeconnect_flutter/db/database_helper.dart';
-import 'package:beeconnect_flutter/screens/apiary_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart'; // Para converter Base64 em imagem
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -78,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.pushNamed(context, '/home');
               break;
             case 1:
-              Navigator.pushNamed(context, '/select_apiary_stats');
+              Navigator.pushNamed(context, '/statistics');
               break;
             case 2:
               Navigator.pushNamed(context, '/map_screen');
@@ -131,11 +134,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final apiary = apiaries[index];
+                            String? imageBase64 = apiary['imageBase64']; // Carregar a imagem em base64 do apiário
+
                             return Card(
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16)),
                               elevation: 4,
                               child: ListTile(
+                                leading: imageBase64 != null
+                                    ? CircleAvatar(
+                                        radius: 30,
+                                        backgroundImage: MemoryImage(Uint8List.fromList(base64Decode(imageBase64))),
+                                      )
+                                    : CircleAvatar(
+                                        radius: 30,
+                                        backgroundColor: Colors.grey[200],
+                                        child: const Icon(Icons.bug_report, color: Colors.white),
+                                      ),
                                 title: Text(
                                   apiary['name'],
                                   style: const TextStyle(fontWeight: FontWeight.bold),
