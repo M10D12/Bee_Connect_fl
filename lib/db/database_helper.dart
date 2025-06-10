@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,  // <--- Versão atualizada para 5
+      version: 5, 
       onCreate: (db, version) async {
         // Criando a tabela apiaries
         await db.execute('''
@@ -37,7 +37,6 @@ class DatabaseHelper {
         )
       ''');
 
-        // Criando a tabela hives com coluna alcas
         await db.execute('''
           CREATE TABLE hives (
             id TEXT PRIMARY KEY,
@@ -51,7 +50,6 @@ class DatabaseHelper {
           )
         ''');
 
-        // Criando a tabela inspecoes
         await db.execute('''
           CREATE TABLE inspecoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,7 +68,8 @@ class DatabaseHelper {
           CREATE TABLE users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
-            password TEXT
+            password TEXT,
+            profilePic TEXT
           )
         ''');
 
@@ -109,7 +108,6 @@ class DatabaseHelper {
           ''');
         }
         if (oldVersion < 5) {
-          // ADICIONA coluna 'alcas' se vier de versão anterior
           await db.execute('''
             ALTER TABLE hives ADD COLUMN alcas INTEGER DEFAULT 0
           ''');
@@ -171,7 +169,7 @@ class DatabaseHelper {
     required String type,
     required String creationDate,
     required String description,
-    int alcas = 0,  // <--- novo parametro com default
+    int alcas = 0, 
   }) async {
     final db = await database;
     await db.insert(
@@ -184,7 +182,7 @@ class DatabaseHelper {
         'type': type,
         'creation_date': creationDate,
         'description': description,
-        'alcas': alcas,  // <--- inserir alcas
+        'alcas': alcas,  
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -294,13 +292,12 @@ class DatabaseHelper {
     await db.delete('users', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> updateUserProfile(String userId, String name, String email, String? profilePicBase64) async {
+  Future<void> updateUserProfile(String userId, String name,  String? profilePicBase64) async {
     final db = await database;
     await db.update(
       'users',
       {
         'username': name,
-        'email': email,
         'profilePic': profilePicBase64,
       },
       where: 'id = ?',

@@ -36,7 +36,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (user != null) {
         setState(() {
           username = user['username'];
-          email = user['email'] ?? '';
           profilePicBase64 = user['profilePic']; 
         });
       }
@@ -65,7 +64,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await dbHelper.updateUserProfile(
           user['id'].toString(),
           username,
-          email,
           profilePicBase64,
         );
 
