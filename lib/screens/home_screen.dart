@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.pushNamed(context, '/home');
               break;
             case 1:
-              Navigator.pushNamed(context, '/apiaries');
+              Navigator.pushNamed(context, '/select_apiary_stats');
               break;
             case 2:
               Navigator.pushNamed(context, '/map_screen');

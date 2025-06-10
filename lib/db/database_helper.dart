@@ -73,6 +73,16 @@ class DatabaseHelper {
             password TEXT
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE honey_harvests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            apiary_id TEXT,
+            amount REAL,
+            date TEXT,
+            FOREIGN KEY(apiary_id) REFERENCES apiaries(id)
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -297,4 +307,35 @@ class DatabaseHelper {
       whereArgs: [userId],
     );
   }
+
+
+
+  Future<void> insertHoneyHarvest({
+    required String apiaryId,
+    required double amount,
+    required DateTime date,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'honey_harvests',
+      {
+        'apiary_id': apiaryId,
+        'amount': amount,
+        'date': date.toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getHoneyHarvestsByApiary(String apiaryId) async {
+    final db = await database;
+    return await db.query(
+      'honey_harvests',
+      where: 'apiary_id = ?',
+      whereArgs: [apiaryId],
+      orderBy: 'date DESC',
+    );
+  }
+
+  
 }
