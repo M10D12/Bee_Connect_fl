@@ -44,15 +44,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     try {
-      // Clear existing data
       _inspections.clear();
       _hiveNames.clear();
       _apiaryNames.clear();
 
-      // Load all inspections for the user's hives
       final apiaries = await db.getApiaries(_loggedUsername!);
       
-      // Create apiary name map
       for (var apiary in apiaries) {
         _apiaryNames[apiary['id'].toString()] = apiary['name'];
       }
@@ -68,19 +65,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
           // Get inspections for each hive
           final inspections = await db.getInspecoes(hive['id']);
           for (var insp in inspections) {
-            if (insp['proxima_visita'] != null) {
-              try {
-                final date = DateTime.parse(insp['proxima_visita']!);
-                _inspections.add(Inspection(
-                  hiveId: hive['id'],
-                  hiveName: hive['name'],
-                  apiaryId: apiaryId,
-                  apiaryName: apiary['name'],
-                  date: date,
-                ));
-              } catch (e) {
-                // Handle date parsing error
-              }
+            try {
+              final date = DateTime.parse(insp['data']!);
+              _inspections.add(Inspection(
+                hiveId: hive['id'],
+                hiveName: hive['name'],
+                apiaryId: apiaryId,
+                apiaryName: apiary['name'],
+                date: date,
+                feeding: insp['alimentacao'] ?? '',
+                treatments: insp['tratamentos'] ?? '',
+                problems: insp['problemas'] ?? '',
+                observations: insp['observacoes'] ?? '',
+              ));
+            } catch (e) {
+              print('Error parsing date for inspection: $e');
             }
           }
         }
@@ -90,10 +89,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
+      });
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading data: $e')),
         );
-      });
+      }
     }
   }
 
@@ -110,15 +111,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final lastDay = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
     final firstWeekday = firstDay.weekday;
 
-    // Create a growable list
     final days = <DateTime?>[];
 
-    // Add null for days before the first day of the month
     for (var i = 1; i < firstWeekday; i++) {
       days.add(null);
     }
-
-    // Add all days of the month
     for (var i = 1; i <= lastDay.day; i++) {
       days.add(DateTime(_currentMonth.year, _currentMonth.month, i));
     }
@@ -130,9 +127,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final dateController = TextEditingController(
       text: DateFormat('dd/MM/yyyy').format(DateTime.now()),
     );
-    final timeController = TextEditingController(
-      text: DateFormat('HH:mm').format(DateTime.now()),
-    );
+    final feedingController = TextEditingController();
+    final treatmentsController = TextEditingController();
+    final problemsController = TextEditingController();
+    final observationsController = TextEditingController();
 
     final apiaries = await db.getApiaries(_loggedUsername!);
     String? selectedApiaryId;
@@ -143,11 +141,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: const Text('Agendar Inspeção'),
+            title: const Text('Nova Inspeção'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Apiary Dropdown
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Apiário'),
                     items: apiaries.map<DropdownMenuItem<String>>((apiary) {
@@ -163,6 +162,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  
+                  // Hive Dropdown
                   if (selectedApiaryId != null)
                     FutureBuilder<List<Map<String, dynamic>>>(
                       future: db.getHivesByApiary(selectedApiaryId!),
@@ -187,10 +188,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       },
                     ),
                   const SizedBox(height: 16),
+                  
+                  // Inspection Date
                   TextFormField(
                     controller: dateController,
                     decoration: const InputDecoration(
-                      labelText: 'Data',
+                      labelText: 'Data da Inspeção',
                       suffixIcon: Icon(Icons.calendar_today),
                     ),
                     readOnly: true,
@@ -198,7 +201,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       final date = await showDatePicker(
                         context: context,
                         initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
+                        firstDate: DateTime(2000),
                         lastDate: DateTime(2100),
                       );
                       if (date != null) {
@@ -207,22 +210,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  
+                  // Feeding Information
                   TextFormField(
-                    controller: timeController,
+                    controller: feedingController,
                     decoration: const InputDecoration(
-                      labelText: 'Hora',
-                      suffixIcon: Icon(Icons.access_time),
-                    ),
-                    readOnly: true,
-                    onTap: () async {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (time != null) {
-                        timeController.text = time.format(context);
-                      }
-                    },
+                      labelText: 'Alimentação',
+                      hintText: 'Tipo e quantidade de alimentação'),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Treatments
+                  TextFormField(
+                    controller: treatmentsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tratamentos',
+                      hintText: 'Tratamentos aplicados'),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Problems
+                  TextFormField(
+                    controller: problemsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Problemas',
+                      hintText: 'Problemas identificados'),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Observations
+                  TextFormField(
+                    controller: observationsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Observações',
+                      hintText: 'Outras observações relevantes'),
+                    maxLines: 3,
                   ),
                 ],
               ),
@@ -237,20 +262,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   backgroundColor: const Color(0xFFFFC107),
                 ),
                 onPressed: () async {
-                  if (selectedHiveId == null) return;
+                  if (selectedHiveId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, selecione uma colmeia')),
+                    );
+                    return;
+                  }
 
                   try {
-                    final dateTimeStr = '${dateController.text} ${timeController.text}';
-                    final dateTime = DateFormat('dd/MM/yyyy HH:mm').parse(dateTimeStr);
+                    final inspectionDate = DateFormat('dd/MM/yyyy').parse(dateController.text);
 
                     await db.insertInspecao(
                       hiveId: selectedHiveId!,
-                      data: DateTime.now().toIso8601String(),
-                      alimentacao: '',
-                      tratamentos: '',
-                      problemas: '',
-                      observacoes: '',
-                      proximaVisita: dateTime.toIso8601String(),
+                      data: inspectionDate.toIso8601String(),
+                      alimentacao: feedingController.text,
+                      tratamentos: treatmentsController.text,
+                      problemas: problemsController.text,
+                      observacoes: observationsController.text,
+                      proximaVisita: null,
                     );
 
                     await _loadData();
@@ -264,7 +293,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   }
                 },
                 child: const Text(
-                  'Agendar',
+                  'Guardar',
                   style: TextStyle(color: Colors.black),
                 ),
               ),
@@ -484,17 +513,135 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      ..._getInspectionsForDate(_selectedDate!).map((insp) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Apiário: ${insp.apiaryName}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                      ..._getInspectionsForDate(_selectedDate!).map((insp) => Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header with apiary and hive info
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFC107).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.location_on, size: 16),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Apiário: ${insp.apiaryName}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    const Icon(Icons.home, size: 16),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Colmeia: ${insp.hiveName}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              
+                              // Inspection details
+                              if (insp.feeding.isNotEmpty) ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.restaurant, color: Colors.orange, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Alimentação:',
+                                            style: TextStyle(fontWeight: FontWeight.w600),
+                                          ),
+                                          Text(insp.feeding),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                              
+                              if (insp.treatments.isNotEmpty) ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.medical_services, color: Colors.red, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Tratamentos:',
+                                            style: TextStyle(fontWeight: FontWeight.w600),
+                                          ),
+                                          Text(insp.treatments),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                              
+                              if (insp.problems.isNotEmpty) ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.warning, color: Colors.red, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Problemas:',
+                                            style: TextStyle(fontWeight: FontWeight.w600),
+                                          ),
+                                          Text(insp.problems),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                              
+                              if (insp.observations.isNotEmpty) ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.notes, color: Colors.blue, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Observações:',
+                                            style: TextStyle(fontWeight: FontWeight.w600),
+                                          ),
+                                          Text(insp.observations),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
                           ),
-                          Text('Colmeia: ${insp.hiveName}'),
-                          const SizedBox(height: 8),
-                        ],
-                      )),
+                        ),
+                      )).toList(),
                     ],
                   ),
                 ),
@@ -512,6 +659,10 @@ class Inspection {
   final String apiaryId;
   final String apiaryName;
   final DateTime date;
+  final String feeding;
+  final String treatments;
+  final String problems;
+  final String observations;
 
   Inspection({
     required this.hiveId,
@@ -519,5 +670,9 @@ class Inspection {
     required this.apiaryId,
     required this.apiaryName,
     required this.date,
+    required this.feeding,
+    required this.treatments,
+    required this.problems,
+    required this.observations,
   });
 }
